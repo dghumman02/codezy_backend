@@ -203,7 +203,7 @@ router.post("/:courseId/classes/:classId/labs", async (req, res) => {
     const updatedClass = course.classes.id(classId);
     const createdLab = updatedClass.labs[updatedClass.labs.length - 1];
 
-    const studentIds = classData.students
+    const studentIds = (classData.students || [])
       .filter(s => s?._id)
       .map(s => s._id.toString());
 
@@ -261,7 +261,7 @@ router.put("/:courseId/classes/:classId/labs/:labId", async (req, res) => {
           teacherId: tenantId,
           teacher_id: tenantId,
           lab_id: labId,
-          problem_statement: req.body.tasks.map((task, i) => 
+          problem_statement: tasksToValidate.map((task, i) =>
           `Task ${i + 1}: ${task.title} - ${task.description || ''}`
         ).join(' | ') || req.body.description || req.body.title || "",
           constraints: tasksToValidate.flatMap(task => task.codeConstraints || []),

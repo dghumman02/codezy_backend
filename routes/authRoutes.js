@@ -193,6 +193,8 @@ router.post("/verify-2fa", async (req, res) => {
     const role = user.role || (user.mfaSecret ? "student" : "teacher");
     const secret = role === "student" ? user.mfaSecret : user.twoFactorSecret;
 
+    if (!secret) return res.status(400).json({ message: "MFA not configured for this account" });
+
     const verified = speakeasy.totp.verify({
       secret: secret,
       encoding: "base32",
