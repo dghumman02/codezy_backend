@@ -6,6 +6,7 @@ import Student from "../models/Students.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { createLabNotifications } from "../services/notificationService.js";
+import { callN8N } from "../services/n8nService.js";
 import SharedLab from "../models/SharedLab.js";
 
 const router = express.Router();
@@ -210,30 +211,13 @@ router.post("/:courseId/classes/:classId/labs", async (req, res) => {
 
     if (studentIds.length > 0) {
       const io = req.app.get("io");
-      const connectedUserRooms = [];
-      io.sockets.adapter.rooms.forEach((sockets, roomName) => {
-        if (roomName.startsWith("user-")) {
-          connectedUserRooms.push(roomName.replace("user-", ""));
-        }
-      });
-      const { notifyEvent } = await import("../services/events.js");
-      await notifyEvent(
-        "NEW_LAB",
-        {
-          labTitle: req.body.title || "New Lab",
-          studentIds,
-          teacherId: userId,
-          teacherName: name || "Your Teacher",
-          tenantId,
-          classId: classId.toString(),
-          data: {
-            labId: createdLab._id.toString(),
-            courseId: courseId.toString(),
-            classId: classId.toString()
-          }
-        },
+      await createLabNotifications({
+        courseId,
+        classId,
+        lab: createdLab,
+        teacherName: name || "Your Teacher",
         io
-      );
+      });
     }
 
     res.status(201).json({ message: "Lab added", lab: createdLab, validationResult });
