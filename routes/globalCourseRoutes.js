@@ -3,6 +3,7 @@ import GlobalCourse from '../models/GlobalCourse.js';
 import LearnerCourseProgress from '../models/LearnerCourseProgress.js';
 import uploadVideo from "../middleware/uploadVideo.js";
 import uploadThumbnail from "../middleware/uploadThumbnail.js";
+import { uploadToCloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -10,8 +11,11 @@ const router = express.Router();
 router.post("/global-courses/upload-thumbnail", uploadThumbnail.single("thumbnail"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-    const thumbnailUrl = `/uploads/thumbnails/${req.file.filename}`;
-    res.status(200).json({ message: "Success", thumbnailUrl });
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: "codezy/thumbnails",
+      resource_type: "image",
+    });
+    res.status(200).json({ message: "Success", thumbnailUrl: result.secure_url });
   } catch (err) {
     console.error("Thumbnail Upload Error:", err);
     res.status(500).json({ error: err.message });
@@ -23,7 +27,11 @@ router.post("/global-courses/upload-video", uploadVideo.single("video"), async (
     const { courseId, moduleId, lessonId } = req.body;
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    const videoUrl = `/uploads/videos/${req.file.filename}`;
+    const uploadResult = await uploadToCloudinary(req.file.buffer, {
+      folder: "codezy/videos",
+      resource_type: "video",
+    });
+    const videoUrl = uploadResult.secure_url;
     const { ObjectId } = await import('mongodb');
     const collection = GlobalCourse.collection;
 

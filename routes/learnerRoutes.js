@@ -9,6 +9,7 @@ import LearnerCourseProgress from "../models/LearnerCourseProgress.js";
 import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import uploadVideo from "../middleware/uploadVideo.js";
+import { uploadToCloudinary } from "../config/cloudinary.js";
 
 const router = express.Router();
 
@@ -160,18 +161,21 @@ router.get("/dashboard-data/:userId", async (req, res) => {
   }
 });
 
-router.post("/upload-video", uploadVideo.single("video"), (req, res) => {
+router.post("/upload-video", uploadVideo.single("video"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    res.json({
-      videoUrl: `/uploads/videos/${req.file.filename}`
+    const result = await uploadToCloudinary(req.file.buffer, {
+      folder: "codezy/videos",
+      resource_type: "video",
     });
 
+    res.json({ videoUrl: result.secure_url });
   } catch (err) {
-    res.status(500).json({ message: "Upload failed" });
+    console.error("Video upload error:", err);
+    res.status(500).json({ message: "Upload failed", error: err.message });
   }
 });
 
