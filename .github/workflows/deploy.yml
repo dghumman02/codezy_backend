@@ -19,11 +19,28 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || 22 }}
+          port: ${{ secrets.SSH_PORT }}
           script: |
+            # ── 1. Clone on first run ────────────────────────────────────────
+            if [ ! -d "${{ secrets.BACKEND_PATH }}/.git" ]; then
+              mkdir -p ${{ secrets.BACKEND_PATH }}
+              git clone git@github.com:dghumman02/codezy_backend.git ${{ secrets.BACKEND_PATH }}
+            fi
+
             cd ${{ secrets.BACKEND_PATH }}
+
+            # ── 2. Sync to exact state of master ────────────────────────────
             git fetch origin master
             git reset --hard origin/master
+
+            # ── 3. Install production dependencies ──────────────────────────
             npm install --omit=dev
-            pm2 reload codezy-backend --update-env || pm2 start server.js --name codezy-backend
+
+            # ── 4. Start or reload PM2 process ──────────────────────────────
+            if pm2 list | grep -q "codezy-backend"; then
+              pm2 reload codezy-backend --update-env
+            else
+              pm2 start server.js --name codezy-backend
+            fi
+
             pm2 save
