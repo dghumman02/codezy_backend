@@ -7,6 +7,7 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import bcrypt from "bcryptjs";
 import GamificationEngine from "../services/GamificationEngine.js";
+import { callN8N } from "../services/n8nService.js";
 const router = express.Router();
 
 // Helper to determine UI themes based on Course Code (as seen in your snippet)
@@ -766,6 +767,34 @@ router.delete("/:studentId/fcm-token", async (req, res) => {
   } catch (err) {
     console.error("FCM token remove error:", err);
     res.status(500).json({ message: "Failed to remove FCM token" });
+  }
+});
+
+/* =============================================================
+   AI CODE ANALYSIS
+============================================================= */
+router.post("/ai-analyze", async (req, res) => {
+  try {
+    const { code, language, taskTitle, taskDescription, codeConstraints, labTitle } = req.body;
+
+    if (!code || !language) {
+      return res.status(400).json({ message: "code and language are required" });
+    }
+
+    const n8nResult = await callN8N("analyze_code", {
+      role: "student",
+      code,
+      language,
+      task_title: taskTitle || "",
+      task_description: taskDescription || "",
+      code_constraints: codeConstraints || [],
+      lab_title: labTitle || ""
+    });
+
+    res.json(n8nResult);
+  } catch (err) {
+    console.error("AI analyze error:", err.message);
+    res.status(500).json({ message: "AI analysis failed", error: err.message });
   }
 });
 
