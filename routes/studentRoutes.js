@@ -784,6 +784,7 @@ router.post("/ai-analyze", async (req, res) => {
     const n8nResult = await callN8N("analyze_code", {
       role: "student",
       code,
+      student_code: code,   // n8n workflow may use this field name
       language,
       task_title: taskTitle || "",
       task_description: taskDescription || "",
@@ -791,7 +792,21 @@ router.post("/ai-analyze", async (req, res) => {
       lab_title: labTitle || ""
     });
 
-    res.json(n8nResult);
+    // Map n8n response fields to what the frontend expects
+    const mapped = {
+      overallAssessment: n8nResult.what_student_did_right || n8nResult.overallAssessment || null,
+      hints: n8nResult.hint
+        ? [n8nResult.hint]
+        : Array.isArray(n8nResult.hints)
+        ? n8nResult.hints
+        : null,
+      logicFeedback: n8nResult.guiding_question || n8nResult.logicFeedback || null,
+      constraintFeedback: n8nResult.constraintFeedback || null,
+      issues: Array.isArray(n8nResult.issues) ? n8nResult.issues : null,
+      snippet: n8nResult.snippet || null,
+    };
+
+    res.json(mapped);
   } catch (err) {
     console.error("AI analyze error:", err.message);
     res.status(500).json({ message: "AI analysis failed", error: err.message });
