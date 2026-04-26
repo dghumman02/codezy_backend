@@ -1761,11 +1761,12 @@ router.post("/:courseId/classes/:classId/students", async (req, res) => {
 
     for (const s of students) {
       const hashed = await bcrypt.hash(s.password || "123456", 10);
+      const { _id, ...studentData } = s;
 
       const doc = await Student.findOneAndUpdate(
         { email: s.email, tenantId },
         {
-          ...s,
+          ...studentData,
           password: hashed,
           tenantId,
           course: courseId,
