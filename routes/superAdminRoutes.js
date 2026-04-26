@@ -236,4 +236,27 @@ router.get("/superadmin/dashboard-stats", async (req, res) => {
   }
 });
 
+// ======================== DELETE INSTITUTION ========================
+router.delete("/superadmin/institution/:id", async (req, res) => {
+  try {
+    const institution = await Institution.findById(req.params.id).lean();
+    if (!institution) return res.status(404).json({ message: "Institution not found" });
+
+    const { tenantId } = institution;
+
+    await Promise.all([
+      Institution.findByIdAndDelete(req.params.id),
+      Student.deleteMany({ tenantId }),
+      Teacher.deleteMany({ tenantId }),
+      Course.deleteMany({ tenantId }),
+      User.deleteMany({ tenantId }),
+    ]);
+
+    res.json({ message: "Institution and all associated data deleted successfully" });
+  } catch (err) {
+    console.error("Delete institution error:", err);
+    res.status(500).json({ message: "Failed to delete institution", error: err.message });
+  }
+});
+
 export default router;
