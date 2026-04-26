@@ -31,7 +31,8 @@ router.post("/login", async (req, res) => {
       const payload = {
         userId: "000000000000000000000000", // Dummy MongoDB ID
         role: "superadmin",
-        tenantId: null // SuperAdmin doesn't belong to a single tenant
+        tenantId: null, // SuperAdmin doesn't belong to a single tenant
+        email: searchEmail
       };
 
       const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -122,7 +123,8 @@ router.post("/login", async (req, res) => {
     const payload = {
       userId: user._id,
       role: detectedRole,
-      tenantId: user.tenantId
+      tenantId: user.tenantId,
+      email: user.email
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -184,13 +186,16 @@ router.post("/verify-2fa", async (req, res) => {
   try {
     const { userId, token } = req.body;
     
-    // Check both collections for the user
-    let user = await Teacher.findById(userId) || await Student.findById(userId);
-    
+    // Determine role from which model the user belongs to
+    let user = await Teacher.findById(userId);
+    let role = "teacher";
+    if (!user) {
+      user = await Student.findById(userId);
+      role = "student";
+    }
+
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Determine role and which secret to use
-    const role = user.role || (user.mfaSecret ? "student" : "teacher");
     const secret = role === "student" ? user.mfaSecret : user.twoFactorSecret;
 
     if (!secret) return res.status(400).json({ message: "MFA not configured for this account" });
@@ -209,7 +214,8 @@ router.post("/verify-2fa", async (req, res) => {
       {
         userId: user._id,
         role: role,
-        tenantId: user.tenantId || null
+        tenantId: user.tenantId || null,
+        email: user.email
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
