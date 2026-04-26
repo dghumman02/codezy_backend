@@ -10,6 +10,7 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import uploadVideo from "../middleware/uploadVideo.js";
 import { uploadToCloudinary } from "../config/cloudinary.js";
+import { callN8N } from "../services/n8nService.js";
 
 const router = express.Router();
 
@@ -450,6 +451,46 @@ router.put("/disable-mfa/:userId", async (req, res) => {
     res.json({ mfaEnabled: false });
   } catch (err) {
     res.status(500).json({ message: "Error disabling MFA" });
+  }
+});
+
+/* ======================================================
+   AI CODE ANALYSIS
+====================================================== */
+router.post("/ai-analyze", async (req, res) => {
+  try {
+    const { code, language, taskTitle, taskDescription, codeConstraints, labTitle } = req.body;
+
+    if (!code || !language) {
+      return res.status(400).json({ message: "code and language are required" });
+    }
+
+    const n8nResult = await callN8N("analyze_code", {
+      role: "individual_learner",
+      code,
+      student_code: code,
+      language,
+      task_title: taskTitle || "",
+      task_description: taskDescription || "",
+      code_constraints: codeConstraints || [],
+      lab_title: labTitle || ""
+    });
+
+    const mapped = {
+      overallAssessment: n8nResult.what_student_did_right || n8nResult.overallAssessment || null,
+      hints: n8nResult.hint
+        ? [n8nResult.hint]
+        : Array.isArray(n8nResult.hints) ? n8nResult.hints : null,
+      logicFeedback: n8nResult.guiding_question || n8nResult.logicFeedback || null,
+      constraintFeedback: n8nResult.constraintFeedback || null,
+      issues: Array.isArray(n8nResult.issues) ? n8nResult.issues : null,
+      snippet: n8nResult.snippet || null,
+    };
+
+    res.json(mapped);
+  } catch (err) {
+    console.error("Learner AI analyze error:", err.message);
+    res.status(500).json({ message: "AI analysis failed", error: err.message });
   }
 });
 
