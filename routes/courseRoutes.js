@@ -1160,6 +1160,41 @@ router.get("/", async (req, res) => {
   }
 });
 
+// CREATE COURSE
+router.post("/", async (req, res) => {
+  try {
+    const { tenantId } = getAuthContext(req);
+    const { title, courseCode, status, classes } = req.body;
+
+    if (!title || !courseCode) {
+      return res.status(400).json({ message: "Course name and code are required" });
+    }
+
+    const course = await Course.create({
+      tenantId,
+      title,
+      courseCode,
+      status: status || "Active",
+      classes: (classes || []).map(cls => ({
+        name: cls.name,
+        teacher: cls.teacher
+      }))
+    });
+
+    const teacherIds = [...new Set((classes || []).map(c => c.teacher).filter(Boolean))];
+    for (const t of teacherIds) {
+      await syncTeacherStats(t, tenantId);
+    }
+
+    res.status(201).json(course);
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Course code already exists for this institution" });
+    }
+    res.status(500).json({ message: err.message });
+  }
+});
+
 /* ========================
    TEACHER REPORTS ENDPOINT
    (Must be defined before dynamic routes like /:courseId)
